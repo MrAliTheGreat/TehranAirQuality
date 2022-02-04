@@ -13,10 +13,25 @@ import pandas
 def createDatasetDetailsCSV():
     pandas.DataFrame(columns = ["File Name", "Date", "Time"]).to_csv("./DatasetDetails.csv" , index = False, header = True)
 
-def addNameDateTimeDetailsToCSV():
+def retrieveAirQualityDetails(chrome : WebDriver):
+    airQualityIndex = chrome.find_element(
+        By.ID, "ContentPlaceHolder1_lblAqi3h"
+    ).get_attribute("innerHTML")
+
+    mainPollutant = str(chrome.find_element(
+        By.ID, "ContentPlaceHolder1_lblAqi3hDesc"
+    ).get_attribute("innerHTML")).split(":")[1]
+
+    chrome.find_element(
+        By.ID, "ContentPlaceHolder1_lblMoreInfo1"
+    ).click()
+
+def addDetailsToCSV(chrome : WebDriver):
     lastFileName = len(pandas.read_csv("./DatasetDetails.csv"))
     date, time = str(datetime.now()).split()
     hour, minute, _ = time.split(":")
+
+    retrieveAirQualityDetails(chrome)
     
     info = \
     {
@@ -44,7 +59,7 @@ def getImageURL(chrome):
     )
 
 def saveImage(imageURL):
-    photoPath = f'./Dataset/{len(pandas.read_csv("./DatasetDetails.csv"))}.jpg'
+    photoPath = f'./Dataset/{len(pandas.read_csv("./DatasetDetails.csv")) + 1}.jpg'
 
     with open(photoPath , 'wb') as handler:
         handler.write(requests.get(imageURL).content)
@@ -54,21 +69,24 @@ startTime = time()
 waitPeriodInMinutes = 30
 
 options = Options()
-options.headless = True
-chrome = webdriver.Chrome(".\chromedriver", options = options)
+options.headless = False
+chrome = webdriver.Chrome("./chromedriver", options = options)
 chrome.implicitly_wait(5)
 
 createDatasetDetailsCSV()
+
+# while(True):
+#     chrome.get("https://airnow.tehran.ir/")
+#     closePopUpWindow(chrome)
+
+#     imageURL = getImageURL(chrome)
+#     saveImage(imageURL)
+#     addDetailsToCSV(chrome)
+#     print("Log: New Picture Scrapped At " + str(datetime.now()))
+#     chrome.quit()
+#     sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
+
 chrome.get("https://airnow.tehran.ir/")
-
-while(True):
-    chrome.refresh()
-    closePopUpWindow(chrome)
-    
-    addNameDateTimeDetailsToCSV()
-    imageURL = getImageURL(chrome)
-    saveImage(imageURL)
-    print("Log: New Picture Scrapped At " + str(datetime.now()))
-
-    sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
-    
+closePopUpWindow(chrome)
+retrieveAirQualityDetails(chrome)
+chrome.quit()
