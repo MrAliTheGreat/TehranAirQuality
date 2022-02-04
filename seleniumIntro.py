@@ -1,5 +1,3 @@
-from time import sleep
-from matplotlib.pyplot import close
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -7,13 +5,31 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from datetime import datetime
 import requests
+import pandas
 
+def createDatasetDetailsCSV():
+    pandas.DataFrame(columns = ["File Name", "Date", "Time"]).to_csv("./DatasetDetails.csv" , index = False, header = True)
+
+
+def addNameDateTimeDetailsToCSV():
+    lastFileName = len(pandas.read_csv("./DatasetDetails.csv"))
+    date, time = str(datetime.now()).split()
+    hour, minute, _ = time.split(":")
+    
+    info = \
+    {
+        "File Name" : str(lastFileName + 1),
+        "Date" : date,
+        "Time" : ":".join([hour, minute])
+    }
+
+    pandas.DataFrame(info , index = [0]).to_csv("./DatasetDetails.csv", mode = "a", index = False, header = False)
 
 def closePopUpWindow(chrome : WebDriver):
     closeButton = chrome.find_element(
         By.ID, "GuideMedical"
     ).find_element(
-        By.CSS_SELECTOR , 'button[aria-label="Close"] > span[aria-hidden="true"]'
+        By.CSS_SELECTOR , 'button[aria-label="Close"]'
     )
 
     closeButton.click()
@@ -26,10 +42,12 @@ def getImageURL(chrome):
     )
 
 def saveImage(imageURL):
-    photoPath = f'.\Photos\{str(datetime.now()).replace(":" , ",")}.jpg'
+    photoPath = f'./Photos/{str(datetime.now()).replace(":" , ",")}.jpg'
 
     with open(photoPath , 'wb') as handler:
         handler.write(requests.get(imageURL).content)
+
+
 
 options = Options()
 options.headless = False
