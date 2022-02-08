@@ -13,12 +13,16 @@ import pandas
 
 
 def createDatasetDetailsCSV():
-    pandas.DataFrame(
-        columns = ["File Name", "Date", "Time", "Current AQI", "Past 24h AQI", "Current Main Pollutant", "Past 24h Main Pollutant",
-                    "CO", "O3", "SO2", "NO2", "PM2.5", "PM10",
-                    "Current Temperature", "Weather Status", "Wind Speed",
-                    "Relative Humidity", "Horizontal Visibility", "Rainfall Amount Past 24h"]
-    ).to_csv("./DatasetDetails.csv" , index = False, header = True)
+    try:
+        datasetDetailsFile = open("./DatasetDetails.csv")
+        datasetDetailsFile.close()
+    except FileNotFoundError:
+        pandas.DataFrame(
+            columns = ["File Name", "Date", "Time", "Current AQI", "Past 24h AQI", "Current Main Pollutant", "Past 24h Main Pollutant",
+                        "CO", "O3", "SO2", "NO2", "PM2.5", "PM10",
+                        "Current Temperature", "Weather Status", "Wind Speed",
+                        "Relative Humidity", "Horizontal Visibility", "Rainfall Amount Past 24h"]
+        ).to_csv("./DatasetDetails.csv" , index = False, header = True)
 
 def getParticleAmount(parentDivID, divID):
     return chrome.find_element(
@@ -175,7 +179,7 @@ chrome.implicitly_wait(5)
 
 createDatasetDetailsCSV()
 
-while(True):
+while(True):    
     chrome.get("https://airnow.tehran.ir/")
     closePopUpWindow(chrome)
 
@@ -183,5 +187,4 @@ while(True):
     saveImage(imageURL)
     addDetailsToCSV(chrome)
     print("Log: New Data Added At " + str(datetime.now()))
-    chrome.quit()
     sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
