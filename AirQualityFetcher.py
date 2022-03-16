@@ -173,6 +173,11 @@ def saveImage(dropboxInstance : dropbox.Dropbox, imageURL):
 
     dropboxInstance.files_upload(requests.get(imageURL).content, photoPath)
 
+def updateDatasetDetailsOnDropbox(dropboxInstance : dropbox.Dropbox):
+    with open("./DatasetDetails.csv", "rb") as csvFile:
+        dropboxInstance.files_upload(csvFile.read(), "/DatasetDetails.csv")
+    
+    os.remove("./DatasetDetails.csv")
 
 
 dropboxInstance = dropbox.Dropbox(os.environ.get("DROPBOX_TOKEN"))
@@ -196,6 +201,9 @@ while(True):
         imageURL = getImageURL(chrome)
     )
     addDetailsToCSV(chrome)
+
     print("Log: New Data Added At " + str(datetime.now()))
-    os.remove("./DatasetDetails.csv")
+
+    updateDatasetDetailsOnDropbox(dropboxInstance)
+    
     sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
