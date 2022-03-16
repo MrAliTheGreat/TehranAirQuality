@@ -30,8 +30,6 @@ def createDatasetDetailsCSV(dropboxInstance : dropbox.Dropbox):
         with open("./DatasetDetails.csv", "rb") as csvFile:
             dropboxInstance.files_upload(csvFile.read(), "/DatasetDetails.csv")
 
-        os.remove("./DatasetDetails.csv")
-
 def getParticleAmount(parentDivID, divID):
     return chrome.find_element(
         By.ID, parentDivID
@@ -170,11 +168,10 @@ def getImageURL(chrome):
         "src"
     )
 
-def saveImage(imageURL):
-    photoPath = f'./Dataset/{len(pandas.read_csv("./DatasetDetails.csv")) + 1}.jpg'
+def saveImage(dropboxInstance : dropbox.Dropbox, imageURL):
+    photoPath = f'/Dataset/{len(pandas.read_csv("./DatasetDetails.csv")) + 1}.jpg'
 
-    with open(photoPath , 'wb') as handler:
-        handler.write(requests.get(imageURL).content)
+    dropboxInstance.files_upload(requests.get(imageURL).content, photoPath)
 
 
 
@@ -194,7 +191,11 @@ while(True):
     chrome.get("https://airnow.tehran.ir/")
     closePopUpWindow(chrome)
 
-    saveImage(getImageURL(chrome))
+    saveImage(
+        dropboxInstance = dropboxInstance,
+        imageURL = getImageURL(chrome)
+    )
     addDetailsToCSV(chrome)
     print("Log: New Data Added At " + str(datetime.now()))
+    os.remove("./DatasetDetails.csv")
     sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
