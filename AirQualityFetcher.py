@@ -1,5 +1,3 @@
-from tkinter import Button
-from xml.dom.minidom import Element
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -9,20 +7,30 @@ from datetime import datetime
 from time import time, sleep
 import requests
 import pandas
+import dropbox
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 
-def createDatasetDetailsCSV():
+def createDatasetDetailsCSV(dropboxInstance : dropbox.Dropbox):
     try:
-        datasetDetailsFile = open("./DatasetDetails.csv")
-        datasetDetailsFile.close()
-    except FileNotFoundError:
+        dropboxInstance.files_download("/DatasetDetails.csv")
+    except dropbox.exceptions.ApiError:
         pandas.DataFrame(
             columns = ["File Name", "Date", "Time", "Current AQI", "Past 24h AQI", "Current Main Pollutant", "Past 24h Main Pollutant",
                         "CO", "O3", "SO2", "NO2", "PM2.5", "PM10",
                         "Current Temperature", "Weather Status", "Wind Speed",
                         "Relative Humidity", "Horizontal Visibility", "Rainfall Amount Past 24h"]
         ).to_csv("./DatasetDetails.csv" , index = False, header = True)
+
+        with open("./DatasetDetails.csv", "rb") as csvFile:
+            dropboxInstance.files_upload(csvFile.read(), "/DatasetDetails.csv")
+
+        os.remove("./DatasetDetails.csv")
 
 def getParticleAmount(parentDivID, divID):
     return chrome.find_element(
@@ -169,6 +177,9 @@ def saveImage(imageURL):
         handler.write(requests.get(imageURL).content)
 
 
+
+dropboxInstance = dropbox.Dropbox(os.environ.get("DROPBOX_TOKEN"))
+
 startTime = time()
 waitPeriodInMinutes = 30
 
@@ -177,14 +188,13 @@ options.headless = True
 chrome = webdriver.Chrome("./chromedriver", options = options)
 chrome.implicitly_wait(5)
 
-createDatasetDetailsCSV()
+createDatasetDetailsCSV(dropboxInstance)
 
 while(True):    
     chrome.get("https://airnow.tehran.ir/")
     closePopUpWindow(chrome)
 
-    imageURL = getImageURL(chrome)
-    saveImage(imageURL)
+    saveImage(getImageURL(chrome))
     addDetailsToCSV(chrome)
     print("Log: New Data Added At " + str(datetime.now()))
     sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
