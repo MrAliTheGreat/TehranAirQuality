@@ -7,8 +7,9 @@ from datetime import datetime
 from time import time, sleep
 import requests
 import pandas
-import dropbox
 import os
+
+import dropbox
 
 from dotenv import load_dotenv
 
@@ -186,34 +187,65 @@ def downloadDatasetDetailsToLocal(dropboxInstance):
     with open("./DatasetDetails.csv", "wb") as csvFile:
         csvFile.write(res.content)
 
-
-
-dropboxInstance = dropbox.Dropbox(os.environ.get("DROPBOX_TOKEN"))
-
-startTime = time()
-waitPeriodInMinutes = 30
-
-options = Options()
-options.headless = True
-chrome = webdriver.Chrome("./chromedriver", options = options)
-chrome.implicitly_wait(5)
-
-createDatasetDetailsCSV(dropboxInstance)
-
-while(True):    
-    chrome.get("https://airnow.tehran.ir/")
-    closePopUpWindow(chrome)
-
-    downloadDatasetDetailsToLocal(dropboxInstance)
-
-    saveImage(
-        dropboxInstance = dropboxInstance,
-        imageURL = getImageURL(chrome)
+def oauthDropbox():
+    authFlow = dropbox.DropboxOAuth2FlowNoRedirect(
+        consumer_key = os.environ.get("APP_KEY"),
+        consumer_secret = os.environ.get("APP_SECRET"),
+        token_access_type = "offline",
     )
-    addDetailsToCSV(chrome)
 
-    print("Log: New Data Added At " + str(datetime.now()))
+    authURL = authFlow.start()
+    print("---------- OAuth Flow ----------")
+    print("1. Go to: " + authURL)
+    print("2. Click \"Allow\" after logging in.")
+    print("3. Copy the authorization code.")
+    authCode = input("Enter the authorization code here: ").strip()
 
-    updateDatasetDetailsOnDropbox(dropboxInstance)
+    try:
+        oauthResult = authFlow.finish(authCode)
+    except Exception as e:
+        print("Authentication Error: " + str(e))
+        exit(1)
     
-    sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
+    print("Oauth Complete!\n")
+    return oauthResult
+
+
+
+oauthResult = oauthDropbox()
+
+with dropbox.Dropbox(
+        oauth2_access_token = oauthResult.access_token,
+        oauth2_access_token_expiration = oauthResult.expires_at,
+        oauth2_refresh_token = oauthResult.refresh_token,
+        app_key = os.environ.get("APP_KEY"),
+        app_secret = os.environ.get("APP_SECRET")
+    ) as dropboxInstance:
+    
+    startTime = time()
+    waitPeriodInMinutes = 30
+
+    options = Options()
+    options.headless = True
+    chrome = webdriver.Chrome("./chromedriver", options = options)
+    chrome.implicitly_wait(5)
+
+    createDatasetDetailsCSV(dropboxInstance)
+
+    while(True):    
+        chrome.get("https://airnow.tehran.ir/")
+        closePopUpWindow(chrome)
+
+        downloadDatasetDetailsToLocal(dropboxInstance)
+
+        saveImage(
+            dropboxInstance = dropboxInstance,
+            imageURL = getImageURL(chrome)
+        )
+        addDetailsToCSV(chrome)
+
+        print("Log: New Data Added At " + str(datetime.now()))
+
+        updateDatasetDetailsOnDropbox(dropboxInstance)
+        
+        sleep( (waitPeriodInMinutes * 60.0) - ((time() - startTime) % (waitPeriodInMinutes * 60.0)) )
